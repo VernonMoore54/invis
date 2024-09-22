@@ -10,6 +10,7 @@ local HeaderLabel = Instance.new("TextLabel") -- Добавляем TextLabel д
 
 -- Устанавливаем свойства ScreenGui
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false -- Делаем GUI не сбрасываемым при возрождении
 
 -- Устанавливаем свойства Frame
 Frame.Parent = ScreenGui
@@ -166,6 +167,11 @@ end)
 -- Добавляем кнопку "IY Reborn" во вкладку "Scripts"
 addButtonToTab("Scripts", "IY Reborn", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/uksfx/infiniteyield-reborn-reborn/master/source"))()
+end)
+
+-- Добавляем кнопку "Devas moonstone farm" во вкладку "Scripts"
+addButtonToTab("Scripts", "Devas moonstone farm", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/VernonMoore54/invis/refs/heads/main/Devas%20moonstone%20Farm.lua"))()
 end)
 
 -- Скрипт для перемещения GUI
