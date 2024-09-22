@@ -25,7 +25,7 @@ local Part
 Part = Instance.new("Part", workspace)
 Part.Anchored = true
 Part.Size = Vector3.new(444, 4, 444)
-Part.CFrame = CFrame.new(999999, 99999, 0) -- Рандомизация Y координаты
+Part.CFrame = CFrame.new(999999, 900, 0) -- Рандомизация Y координаты
 Part.CanCollide = true
 FakeCharacter.Parent = workspace
 FakeCharacter.HumanoidRootPart.CFrame = Part.CFrame * CFrame.new(0, 5, 0)
