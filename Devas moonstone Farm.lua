@@ -9,7 +9,7 @@ local positions = {
     Vector3.new(2417, -243, 540),
     Vector3.new(1693, -213, -195),
     Vector3.new(2294, -232, 106),
-    Vector3.new(1631, -224, 188),
+    Vector3.new(1631, -224, 188)
 }
 
 -- Глобальный флаг для контроля работы скрипта
@@ -64,10 +64,10 @@ while _G.farmEnabled do
         -- Телепортация на 30 единиц вниз после нажатия G
         teleportDownBy30()
 		wait(0.1)
-		character.HumanoidRootPart.Anchored = true
+		
         
         -- Подождать 6.5 секунд перед переходом к следующей позиции
         wait(6.5)
-		character.HumanoidRootPart.Anchored = false
+	
     end
 end
