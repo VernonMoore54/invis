@@ -136,6 +136,7 @@ local fruitNames = {
     "Pepper",
     "Cacao",
     "Beanstalk",
+    "Raspberry",
     -- добавьте остальные названия по необходимости...
 }
 
@@ -241,9 +242,9 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             local elapsed = 0
-            while elapsed < 0.3 do
-                task.wait(0.05)
-                elapsed = elapsed + 0.05
+            while elapsed < 0.2 do
+                task.wait(0.02)
+                elapsed = elapsed + 0.02
                 if not enabled then break end
             end
             if not enabled then continue end
@@ -258,7 +259,7 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             -- Зажимаем E
-            VirtualInputMgr:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            
 
             -- Пока включён режим:
             while enabled do
@@ -267,6 +268,9 @@ task.spawn(function()
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp.CFrame = CFrame.new(getRandomFarmPos())
+                    VirtualInputMgr:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.03)
+                    VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end
 
                 -- 6.e.2) Переносим всё из Backpack → Character (кроме "Shovel [Destroy Plants]")
@@ -295,9 +299,9 @@ task.spawn(function()
 
                 -- Ждём 0.5 секунды перед следующим заходом
                 local waited = 0
-                while waited < 0.5 do
-                    task.wait(0.05)
-                    waited = waited + 0.05
+                while waited < 0.1 do
+                    task.wait(0.01)
+                    waited = waited + 0.01
                     if not enabled then break end
                 end
                 if not enabled then
@@ -306,7 +310,6 @@ task.spawn(function()
             end
 
             -- Отпускаем E
-            VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
 
             -- Если переключатель выключили во время удержания E
             if not enabled then
@@ -330,9 +333,9 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             local elapsed = 0
-            while elapsed < 0.3 do
-                task.wait(0.05)
-                elapsed = elapsed + 0.05
+            while elapsed < 0.1 do
+                task.wait(0.01)
+                elapsed = elapsed + 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
