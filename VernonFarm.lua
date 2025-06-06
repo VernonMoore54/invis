@@ -278,9 +278,9 @@ task.spawn(function()
 
                 -- Ждём 0.5 секунды перед следующей итерацией
                 local waited = 0
-                while waited < 0.2 do
-                    task.wait(0.02)
-                    waited = waited + 0.02
+                while waited < 0.1 do
+                    task.wait(0.01)
+                    waited = waited + 0.01
                     if not enabled then break end
                 end
                 if not enabled then
@@ -312,9 +312,9 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             local elapsed = 0
-            while elapsed < 0.2 do
-                task.wait(0.02)
-                elapsed = elapsed + 0.02
+            while elapsed < 0.1 do
+                task.wait(0.01)
+                elapsed = elapsed + 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
