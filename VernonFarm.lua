@@ -20,13 +20,14 @@ setfpscap(155)
       4) Основной цикл: пока включен переключатель, выполняем по порядку:
            a) Переносим все предметы из Backpack → Character, кроме Shovel [Destroy Plants].
            b) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer(targetPosPlant, name).
-           c) Телепортируем персонажа на (24, 7, -135).
+           c) Телепортируем персонажа на (24 ±5, 3, -126 ±5).
            d) Ждём 0.3 сек.
            e) Зажимаем "E" через VirtualInputManager и **пока удерживаем E**:
                 – с небольшой задержкой (0.5 сек) повторяем:
-                    1) Переносим все предметы из Backpack → Character (кроме того же Shovel).
-                    2) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer.
-                    3) Проверяем общее количество Tool-ов (рюкзак + персонаж).
+                    1) Телепортируем персонажа снова на (24 ±5, 3, -126 ±5).
+                    2) Переносим все предметы из Backpack → Character (кроме того же Shovel).
+                    3) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer.
+                    4) Проверяем общее количество Tool-ов (рюкзак + персонаж).
                 – Как только количество Tool-ов > 130 **или** переключатель выключили, выходим из цикла.
            f) После выхода из цикла — отпускаем "E".
            g) Телепортируем персонажа на (89, 3, 0).
@@ -96,8 +97,19 @@ end)
 -- 4.1) Координаты для посадки фруктов
 local targetPosPlant = Vector3.new(26.787460327148438, 0.13552704453468323, -130.29730224609375)
 
--- 4.2) Координаты для фарма (начало)
-local farmPos = Vector3.new(24, 7, -135)
+-- 4.2) Базовая точка для фермы (центральная координата без рандома)
+local farmBase = Vector3.new(24, 3, -126)
+
+-- 4.2.a) Функция, возвращающая рандомизированную точку фермы ±5 метров по X и Z
+local function getRandomFarmPos()
+    local offsetX = (math.random() * 10) - 5
+    local offsetZ = (math.random() * 10) - 5
+    return Vector3.new(
+        farmBase.X + offsetX,
+        farmBase.Y,
+        farmBase.Z + offsetZ
+    )
+end
 
 -- 4.3) Координаты для продажи (после фарма)
 local sellPos = Vector3.new(89, 3, 0)
@@ -124,7 +136,6 @@ local fruitNames = {
     "Pepper",
     "Cacao",
     "Beanstalk",
-
     -- добавьте остальные названия по необходимости...
 }
 
@@ -215,13 +226,13 @@ task.spawn(function()
         end
 
         ----------------------------------------------------------------------------
-        -- 6.c) Телепортируем персонажа на позицию фермы
+        -- 6.c) Телепортируем персонажа на рандомизированную позицию фермы
         ----------------------------------------------------------------------------
         do
             character = getCharacter()
             local hrp = character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                hrp.CFrame = CFrame.new(farmPos)
+                hrp.CFrame = CFrame.new(getRandomFarmPos())
             end
         end
 
@@ -239,25 +250,26 @@ task.spawn(function()
         end
 
         ----------------------------------------------------------------------------
-        -- 6.e) Зажимаем "E" и — пока удерживается "E" и tools ≤ 130 — 
-        --       повторяем с небольшой задержкой: перенос из Backpack → Character 
-        --       + посадка фруктов
+        -- 6.e) Зажимаем "E" и — пока удерживаем E
+        --       1) Каждые 0.5 сек телепортируем на новую рандомизированную ферму
+        --       2) Переносим все предметы из Backpack → Character (кроме лопаты)
+        --       3) Тасуем список фруктов и сажаем
+        --       4) Проверяем общее количество Tool-ов
         ----------------------------------------------------------------------------
         do
+            -- Зажимаем E
+            VirtualInputMgr:SendKeyEvent(true, Enum.KeyCode.E, false, game)
 
-            -- Пока включён режим и общее кол-во инструментов ≤ 130:
+            -- Пока включён режим:
             while enabled do
-                local toolCount = countTools()
-                VirtualInputMgr:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                task.wait(0.01)
-                VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(24, 7, -135)
-
-                if toolCount > 130 then
-                    break
+                -- 6.e.1) Телепорт на новую рандомизированную позицию фермы
+                character = getCharacter()
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = CFrame.new(getRandomFarmPos())
                 end
 
-                -- Переносим всё из Backpack → Character (опять же, за исключением лопаты)
+                -- 6.e.2) Переносим всё из Backpack → Character (кроме "Shovel [Destroy Plants]")
                 character = getCharacter()
                 for _, item in ipairs(backpack:GetChildren()) do
                     if item.Name ~= "Shovel [Destroy Plants]" then
@@ -265,22 +277,27 @@ task.spawn(function()
                     end
                 end
 
-                -- Посадка фруктов во время удержания E:
+                -- 6.e.3) Посадка фруктов во время удержания E
                 local shuffledNames2 = shuffle(fruitNames)
                 for _, name in ipairs(shuffledNames2) do
                     if not enabled then break end
                     plantEvent:FireServer(targetPosPlant, name)
-                    -- при необходимости: task.wait(0.01)
                 end
                 if not enabled then
                     break
                 end
 
-                -- Ждём 0.5 секунды перед следующей итерацией
+                -- 6.e.4) Проверяем количество Tool-ов
+                local toolCount = countTools()
+                if toolCount > 130 then
+                    break
+                end
+
+                -- Ждём 0.5 секунды перед следующим заходом
                 local waited = 0
-                while waited < 0.1 do
-                    task.wait(0.01)
-                    waited = waited + 0.01
+                while waited < 0.5 do
+                    task.wait(0.05)
+                    waited = waited + 0.05
                     if not enabled then break end
                 end
                 if not enabled then
@@ -288,9 +305,10 @@ task.spawn(function()
                 end
             end
 
-            
+            -- Отпускаем E
+            VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
 
-            -- Если переключатель выключили прямо во время удержания E — переходим к началу внешнего цикла
+            -- Если переключатель выключили во время удержания E
             if not enabled then
                 continue
             end
@@ -312,9 +330,9 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             local elapsed = 0
-            while elapsed < 0.1 do
-                task.wait(0.01)
-                elapsed = elapsed + 0.01
+            while elapsed < 0.3 do
+                task.wait(0.05)
+                elapsed = elapsed + 0.05
                 if not enabled then break end
             end
             if not enabled then continue end
