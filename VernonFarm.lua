@@ -138,6 +138,7 @@ local fruitNames = {
     "Beanstalk",
     "Raspberry",
     "Rose",
+    "Lilac",
     -- добавьте остальные названия по необходимости...
 }
 
