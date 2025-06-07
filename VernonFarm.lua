@@ -102,11 +102,13 @@ local farmBase = Vector3.new(24, 3, -126)
 
 -- 4.2.a) Функция, возвращающая рандомизированную точку фермы ±5 метров по X и Z
 local function getRandomFarmPos()
-    local offsetX = (math.random() * 10) - 5
-    local offsetZ = (math.random() * 10) - 5
+    local offsetX = (math.random() * 10) +- 5
+    local offsetY = (math.random() * 2) + 2
+    local offsetZ = (math.random() * 10) +- 5
+
     return Vector3.new(
         farmBase.X + offsetX,
-        farmBase.Y,
+        farmBase.Y + offsetY,
         farmBase.Z + offsetZ
     )
 end
