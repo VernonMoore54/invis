@@ -18,17 +18,20 @@ setfpscap(155)
       2) Создаём новый ScreenGui с кнопкой-переключателем (Draggable).
       3) По клику включаем/выключаем режим “тасовать-сажать + фармить + продавать”.
       4) Основной цикл: пока включен переключатель, выполняем по порядку:
-           a) Переносим все предметы из Backpack → Character, кроме Shovel [Destroy Plants].
+           a) Переносим все предметы из Backpack → Character, кроме Shovel [Destroy Plants]
+              и всех, в именах которых есть "Uses" или "Age".
            b) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer(targetPosPlant, name).
            c) Телепортируем персонажа на (24 ±5, 3, -126 ±5).
            d) Ждём 0.3 сек.
            e) Зажимаем "E" через VirtualInputManager и **пока удерживаем E**:
                 – с небольшой задержкой (0.5 сек) повторяем:
                     1) Телепортируем персонажа снова на (24 ±5, 3, -126 ±5).
-                    2) Переносим все предметы из Backpack → Character (кроме того же Shovel).
+                    2) Переносим все предметы из Backpack → Character (кроме лопаты,
+                       а также любых, чьи имена содержат "Uses" или "Age").
                     3) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer.
                     4) Проверяем общее количество Tool-ов (рюкзак + персонаж).
-                – Как только количество Tool-ов > 130 **или** переключатель выключили, выходим из цикла.
+                – Как только количество Tool-ов > 130 **или** переключатель выключили,
+                   выходим из цикла.
            f) После выхода из цикла — отпускаем "E".
            g) Телепортируем персонажа на (89, 3, 0).
            h) Ждём 0.3 сек.
@@ -102,15 +105,9 @@ local farmBase = Vector3.new(24, 3, -126)
 
 -- 4.2.a) Функция, возвращающая рандомизированную точку фермы ±5 метров по X и Z
 local function getRandomFarmPos()
-    local offsetX = (math.random() * 10) +- 5
-    local offsetY = (math.random() * 2) + 2
-    local offsetZ = (math.random() * 10) +- 5
-
-    return Vector3.new(
-        farmBase.X + offsetX,
-        farmBase.Y + offsetY,
-        farmBase.Z + offsetZ
-    )
+    local offsetX = (math.random() * 10) - 5
+    local offsetZ = (math.random() * 10) - 5
+    return Vector3.new(farmBase.X + offsetX, farmBase.Y, farmBase.Z + offsetZ)
 end
 
 -- 4.3) Координаты для продажи (после фарма)
@@ -118,38 +115,16 @@ local sellPos = Vector3.new(89, 3, 0)
 
 -- 4.4) Список фруктов/растений
 local fruitNames = {
-    "Tomato",
-    "Carrot",
-    "Strawberry",
-    "Orange Tulip",
-    "Corn",
-    "Blueberry",
-    "Daffodil",
-    "Watermelon",
-    "Pumpkin",
-    "Apple",
-    "Bamboo",
-    "Coconut",
-    "Cactus",
-    "Dragon Fruit",
-    "Mango",
-    "Grape",
-    "Mushroom",
-    "Pepper",
-    "Cacao",
-    "Beanstalk",
-    "Raspberry",
-    "Rose",
-    "Lilac",
-    -- добавьте остальные названия по необходимости...
+    "Orange Tulip","Corn","Blueberry","Daffodil",
+    "Watermelon","Pumpkin","Apple","Bamboo","Coconut","Cactus","Dragon Fruit",
+    "Mango","Grape","Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose",
+    "Lilac", "Foxglove", "Lily",
 }
 
--- 4.5) Fisher–Yates shuffle (каждый проход – новый порядок)
+-- 4.5) Fisher–Yates shuffle
 local function shuffle(t)
     local temp = {}
-    for i = 1, #t do
-        temp[i] = t[i]
-    end
+    for i = 1, #t do temp[i] = t[i] end
     for i = #temp, 2, -1 do
         local j = math.random(i)
         temp[i], temp[j] = temp[j], temp[i]
@@ -160,35 +135,25 @@ end
 -- 4.6) Инициализируем math.random
 math.randomseed(tick())
 
--- 4.7) RemoteEvent для посадки
-local plantEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Plant_RE")
+-- 4.7) RemoteEvent для посадки и продажи
+local plantEvent = ReplicatedStorage.GameEvents:WaitForChild("Plant_RE")
+local sellEvent  = ReplicatedStorage.GameEvents:WaitForChild("Sell_Inventory")
 
--- 4.8) RemoteEvent для продажи
-local sellEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Sell_Inventory")
-
--- 4.9) Ссылки на Backpack и Character
+-- 4.8) Ссылки на Backpack и Character
 local backpack = player:WaitForChild("Backpack")
-local function getCharacter()
-    return player.Character or player.CharacterAdded:Wait()
-end
+local function getCharacter() return player.Character or player.CharacterAdded:Wait() end
 
 -------------------------------------------------------------------------------
--- 5) Функция для подсчёта Tool-ов в Backpack + Character
+-- 5) Подготовка функции подсчёта Tool-ов
 -------------------------------------------------------------------------------
 local function countTools()
     local count = 0
-    -- считаем в рюкзаке
     for _, item in ipairs(backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            count = count + 1
-        end
+        if item:IsA("Tool") then count += 1 end
     end
-    -- считаем на персонаже (возможно предметы уже туда перенесены)
-    local character = getCharacter()
-    for _, item in ipairs(character:GetChildren()) do
-        if item:IsA("Tool") then
-            count = count + 1
-        end
+    local char = getCharacter()
+    for _, item in ipairs(char:GetChildren()) do
+        if item:IsA("Tool") then count += 1 end
     end
     return count
 end
@@ -198,47 +163,41 @@ end
 -------------------------------------------------------------------------------
 task.spawn(function()
     while true do
-        -- Ждём немного перед каждой итерацией, чтобы не перегружать CPU:
-        task.wait(0.05)
+        task.wait(0.01)
+        if not enabled then continue end
 
-        if not enabled then
-            continue
-        end
-
-        ----------------------------------------------------------------------------
-        -- 6.a) Переносим всё из Backpack → Character, кроме "Shovel [Destroy Plants]"
-        ----------------------------------------------------------------------------
         local character = getCharacter()
+
+        ----------------------------------------------------------------------------
+        -- 6.a) Переносим всё из Backpack → Character,
+        --       кроме "Shovel [Destroy Plants]" и любых, чьи имена содержат "Uses" или "Age"
+        ----------------------------------------------------------------------------
         for _, item in ipairs(backpack:GetChildren()) do
-            if item.Name ~= "Shovel [Destroy Plants]" then
+            local name = item.Name
+            if name ~= "Shovel [Destroy Plants]" 
+            and not name:find("Uses") 
+            and not name:find("Age") then
                 item.Parent = character
             end
         end
 
         ----------------------------------------------------------------------------
-        -- 6.b) Посадка фруктов: тасуем список и шлём Plant_RE для каждого
+        -- 6.b) Посадка фруктов
         ----------------------------------------------------------------------------
         do
-            local shuffledNames = shuffle(fruitNames)
-            for _, name in ipairs(shuffledNames) do
+            for _, name in ipairs(shuffle(fruitNames)) do
                 if not enabled then break end
                 plantEvent:FireServer(targetPosPlant, name)
-                -- при необходимости можно вставить небольшой task.wait(0.01)
             end
-            if not enabled then
-                continue
-            end
+            if not enabled then continue end
         end
 
         ----------------------------------------------------------------------------
         -- 6.c) Телепортируем персонажа на рандомизированную позицию фермы
         ----------------------------------------------------------------------------
         do
-            character = getCharacter()
             local hrp = character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.CFrame = CFrame.new(getRandomFarmPos())
-            end
+            if hrp then hrp.CFrame = CFrame.new(getRandomFarmPos()) end
         end
 
         ----------------------------------------------------------------------------
@@ -246,29 +205,20 @@ task.spawn(function()
         ----------------------------------------------------------------------------
         do
             local elapsed = 0
-            while elapsed < 0.2 do
-                task.wait(0.02)
-                elapsed = elapsed + 0.02
+            while elapsed < 0.1 do
+                task.wait(0.01)
+                elapsed += 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
         end
 
         ----------------------------------------------------------------------------
-        -- 6.e) Зажимаем "E" и — пока удерживаем E
-        --       1) Каждые 0.5 сек телепортируем на новую рандомизированную ферму
-        --       2) Переносим все предметы из Backpack → Character (кроме лопаты)
-        --       3) Тасуем список фруктов и сажаем
-        --       4) Проверяем общее количество Tool-ов
+        -- 6.e) Зажимаем "E" и выполняем цикл с teleport+plant+transfer
         ----------------------------------------------------------------------------
         do
-            -- Зажимаем E
-            
-
-            -- Пока включён режим:
             while enabled do
-                -- 6.e.1) Телепорт на новую рандомизированную позицию фермы
-                character = getCharacter()
+                -- Телепорт и короткий tap E
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp.CFrame = CFrame.new(getRandomFarmPos())
@@ -277,59 +227,46 @@ task.spawn(function()
                     VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end
 
-                -- 6.e.2) Переносим всё из Backpack → Character (кроме "Shovel [Destroy Plants]")
-                character = getCharacter()
+                -- Снова переносим
                 for _, item in ipairs(backpack:GetChildren()) do
-                    if item.Name ~= "Shovel [Destroy Plants]" then
+                    local name = item.Name
+                    if name ~= "Shovel [Destroy Plants]" 
+                    and not name:find("Uses") 
+                    and not name:find("Age") then
                         item.Parent = character
                     end
                 end
 
-                -- 6.e.3) Посадка фруктов во время удержания E
-                local shuffledNames2 = shuffle(fruitNames)
-                for _, name in ipairs(shuffledNames2) do
+                -- Сажаем
+                for _, name in ipairs(shuffle(fruitNames)) do
                     if not enabled then break end
                     plantEvent:FireServer(targetPosPlant, name)
                 end
-                if not enabled then
-                    break
-                end
 
-                -- 6.e.4) Проверяем количество Tool-ов
-                local toolCount = countTools()
-                if toolCount > 130 then
-                    break
-                end
+                -- Проверяем количество инструментов
+                if countTools() > 130 then break end
 
-                -- Ждём 0.5 секунды перед следующим заходом
-                local waited = 0
-                while waited < 0.1 do
+                -- Ждём 0.5 сек перед повтором
+                local wt = 0
+                while wt < 0.1 do
                     task.wait(0.01)
-                    waited = waited + 0.01
+                    wt += 0.01
                     if not enabled then break end
                 end
-                if not enabled then
-                    break
-                end
+                if not enabled then break end
             end
 
-            -- Отпускаем E
-
-            -- Если переключатель выключили во время удержания E
-            if not enabled then
-                continue
-            end
+            -- Отпускаем E если выключили
+            VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            if not enabled then continue end
         end
 
         ----------------------------------------------------------------------------
         -- 6.f) Телепортируем персонажа на позицию продажи
         ----------------------------------------------------------------------------
         do
-            character = getCharacter()
             local hrp = character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.CFrame = CFrame.new(sellPos)
-            end
+            if hrp then hrp.CFrame = CFrame.new(sellPos) end
         end
 
         ----------------------------------------------------------------------------
@@ -339,14 +276,14 @@ task.spawn(function()
             local elapsed = 0
             while elapsed < 0.1 do
                 task.wait(0.01)
-                elapsed = elapsed + 0.01
+                elapsed += 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
         end
 
         ----------------------------------------------------------------------------
-        -- 6.h) Вызываем Sell_Inventory:FireServer() три раза
+        -- 6.h) Продажа: три вызова Sell_Inventory
         ----------------------------------------------------------------------------
         do
             for i = 1, 3 do
@@ -355,7 +292,5 @@ task.spawn(function()
                 task.wait(0.01)
             end
         end
-
-        -- После этого внешний while вернётся к началу и проверит enabled снова.
     end
 end)
