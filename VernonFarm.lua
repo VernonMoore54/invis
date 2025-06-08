@@ -106,8 +106,9 @@ local farmBase = Vector3.new(24, 3, -126)
 -- 4.2.a) Функция, возвращающая рандомизированную точку фермы ±5 метров по X и Z
 local function getRandomFarmPos()
     local offsetX = (math.random() * 10) - 5
+    local offsetY = (math.random() * 10) + 3
     local offsetZ = (math.random() * 10) - 5
-    return Vector3.new(farmBase.X + offsetX, farmBase.Y, farmBase.Z + offsetZ)
+    return Vector3.new(farmBase.X + offsetX, farmBase.Y + offsetY, farmBase.Z + offsetZ)
 end
 
 -- 4.3) Координаты для продажи (после фарма)
@@ -118,7 +119,7 @@ local fruitNames = {
     "Orange Tulip","Corn","Blueberry","Daffodil",
     "Watermelon","Pumpkin","Apple","Bamboo","Coconut","Cactus","Dragon Fruit",
     "Mango","Grape","Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose",
-    "Lilac", "Foxglove", "Lily",
+    "Lilac", "Foxglove", "Lily", "Pink Lily", "Purple Dahlia", "Lavender", "Nectarshade",
 }
 
 -- 4.5) Fisher–Yates shuffle
