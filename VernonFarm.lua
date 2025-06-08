@@ -1,68 +1,46 @@
 repeat task.wait() until game:IsLoaded()
 repeat task.wait() until game.Players.LocalPlayer
 repeat task.wait() until game.Players.LocalPlayer.Character
-
 task.wait()
-
 setfpscap(155)
 
+-- Конфигуратор позиции UI (меняйте эти значения под ваше расположение)
+local UI_START_POS = UDim2.new(0, 640, 0, 100)  -- по умолчанию 50px от левого края, 100px от верха
 
 --[[============================================================================
     LocalScript: PlantingWithToggleAndFarm.lua
     Расположение: StarterGui → PlantingWithToggleAndFarm.lua
-    (Каждый раз, когда вы вставляете/выполняете этот скрипт, он удалит старый UI,
-     если он есть, и создаст новый.)
-
-    Содержание:
-      1) Удаляем старый UI "PlantingToggleGUI", если он существует.
-      2) Создаём новый ScreenGui с кнопкой-переключателем (Draggable).
-      3) По клику включаем/выключаем режим “тасовать-сажать + фармить + продавать”.
-      4) Основной цикл: пока включен переключатель, выполняем по порядку:
-           a) Переносим все предметы из Backpack → Character, кроме Shovel [Destroy Plants]
-              и всех, в именах которых есть "Uses" или "Age".
-           b) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer(targetPosPlant, name).
-           c) Телепортируем персонажа на (24 ±5, 3, -126 ±5).
-           d) Ждём 0.3 сек.
-           e) Зажимаем "E" через VirtualInputManager и **пока удерживаем E**:
-                – с небольшой задержкой (0.5 сек) повторяем:
-                    1) Телепортируем персонажа снова на (24 ±5, 3, -126 ±5).
-                    2) Переносим все предметы из Backpack → Character (кроме лопаты,
-                       а также любых, чьи имена содержат "Uses" или "Age").
-                    3) Тасуем список фруктов и для каждого шлём Plant_RE:FireServer.
-                    4) Проверяем общее количество Tool-ов (рюкзак + персонаж).
-                – Как только количество Tool-ов > 130 **или** переключатель выключили,
-                   выходим из цикла.
-           f) После выхода из цикла — отпускаем "E".
-           g) Телепортируем персонажа на (89, 3, 0).
-           h) Ждём 0.3 сек.
-           i) Три раза вызываем RemoteEvent Sell_Inventory:FireServer().
-      5) После продачи цикл повторяется, пока переключатель включен. При выключении – 
-         скрипт досрочно прерывает все действия.
+    (При каждом запуске удаляет старый UI "PlantingToggleGUI" и создаёт новый.)
 ================================================================================]]
 
-local Players            = game:GetService("Players")
-local ReplicatedStorage  = game:GetService("ReplicatedStorage")
-local VirtualInputMgr    = game:GetService("VirtualInputManager")
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputMgr   = game:GetService("VirtualInputManager")
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--------------------------------------------------------------------------------
--- 1) Если есть старый UI "PlantingToggleGUI" – удаляем его
--------------------------------------------------------------------------------
+-- Удаляем старый UI
 local oldGui = playerGui:FindFirstChild("PlantingToggleGUI")
-if oldGui then
-    oldGui:Destroy()
-end
+if oldGui then oldGui:Destroy() end
 
--------------------------------------------------------------------------------
--- 2) Создаём новый ScreenGui + кнопку-переключатель
--------------------------------------------------------------------------------
+-- Создаём новый ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name         = "PlantingToggleGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent       = playerGui
 
+-- Единый Frame, draggable, позиция задаётся через UI_START_POS
+local container = Instance.new("Frame")
+container.Name               = "ControlContainer"
+container.Size               = UDim2.new(0, 200, 0, 40)
+container.Position           = UI_START_POS
+container.BackgroundTransparency = 1
+container.Active             = true
+container.Draggable          = true
+container.Parent             = screenGui
+
+-- Toggle Button
 local toggleButton = Instance.new("TextButton")
 toggleButton.Name             = "ToggleButton"
 toggleButton.Text             = "OFF"
@@ -71,16 +49,25 @@ toggleButton.TextSize         = 20
 toggleButton.TextColor3       = Color3.new(1, 1, 1)
 toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 toggleButton.Size             = UDim2.new(0, 100, 0, 40)
-toggleButton.Position         = UDim2.new(0.35, 0, 0.1, 0)
-toggleButton.AnchorPoint      = Vector2.new(0, 0)
-toggleButton.Active           = true
-toggleButton.Draggable        = true
-toggleButton.Parent           = screenGui
+toggleButton.Position         = UDim2.new(0, 0, 0, 0)
+toggleButton.Parent           = container
 
--------------------------------------------------------------------------------
--- 3) Переменная-состояние: включен ли режим фарма/посадки/продажи
--------------------------------------------------------------------------------
-local enabled = false
+-- Key Input Box
+local keyBox = Instance.new("TextBox")
+keyBox.Name             = "KeyBox"
+keyBox.Text             = "E"
+keyBox.Font             = Enum.Font.SourceSans
+keyBox.TextSize         = 20
+keyBox.TextColor3       = Color3.new(1,1,1)
+keyBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+keyBox.Size             = UDim2.new(0, 80, 0, 40)
+keyBox.Position         = UDim2.new(0, 110, 0, 0)
+keyBox.ClearTextOnFocus = false
+keyBox.Parent           = container
+
+-- Состояние и выбранная клавиша
+local enabled    = false
+local currentKey = Enum.KeyCode.E
 
 toggleButton.MouseButton1Click:Connect(function()
     enabled = not enabled
@@ -93,36 +80,28 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--------------------------------------------------------------------------------
--- 4) Настройка данных для посадки и продажи
--------------------------------------------------------------------------------
+keyBox.FocusLost:Connect(function()
+    local txt = keyBox.Text:upper():gsub("%s+","")
+    if Enum.KeyCode[txt] then
+        currentKey = Enum.KeyCode[txt]
+    else
+        keyBox.Text = currentKey.Name
+    end
+end)
 
--- 4.1) Координаты для посадки фруктов
+-- (Далее весь остальной код без изменений, использующий `currentKey` при VirtualInputMgr:SendKeyEvent)
+
 local targetPosPlant = Vector3.new(26.787460327148438, 0.13552704453468323, -130.29730224609375)
+local farmBase        = Vector3.new(24, 3, -126)
+local sellPos         = Vector3.new(89, 3, 0)
 
--- 4.2) Базовая точка для фермы (центральная координата без рандома)
-local farmBase = Vector3.new(24, 3, -126)
-
--- 4.2.a) Функция, возвращающая рандомизированную точку фермы ±5 метров по X и Z
-local function getRandomFarmPos()
-    local offsetX = (math.random() * 10) - 5
-    local offsetY = (math.random() * 10) + 3
-    local offsetZ = (math.random() * 10) - 5
-    return Vector3.new(farmBase.X + offsetX, farmBase.Y + offsetY, farmBase.Z + offsetZ)
-end
-
--- 4.3) Координаты для продажи (после фарма)
-local sellPos = Vector3.new(89, 3, 0)
-
--- 4.4) Список фруктов/растений
 local fruitNames = {
-    "Orange Tulip","Corn","Blueberry","Daffodil",
-    "Watermelon","Pumpkin","Apple","Bamboo","Coconut","Cactus","Dragon Fruit",
-    "Mango","Grape","Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose",
-    "Lilac", "Foxglove", "Lily", "Pink Lily", "Purple Dahlia", "Lavender", "Nectarshade",
+    "Orange Tulip",
+    "Apple","Bamboo","Coconut","Cactus","Dragon Fruit","Mango","Grape",
+    "Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose","Lilac",
+    "Foxglove","Lily","Pink Lily","Purple Dahlia","Lavender","Nectarshade","Nectarine","Mushroom",
 }
 
--- 4.5) Fisher–Yates shuffle
 local function shuffle(t)
     local temp = {}
     for i = 1, #t do temp[i] = t[i] end
@@ -133,35 +112,26 @@ local function shuffle(t)
     return temp
 end
 
--- 4.6) Инициализируем math.random
 math.randomseed(tick())
 
--- 4.7) RemoteEvent для посадки и продажи
 local plantEvent = ReplicatedStorage.GameEvents:WaitForChild("Plant_RE")
 local sellEvent  = ReplicatedStorage.GameEvents:WaitForChild("Sell_Inventory")
 
--- 4.8) Ссылки на Backpack и Character
 local backpack = player:WaitForChild("Backpack")
 local function getCharacter() return player.Character or player.CharacterAdded:Wait() end
 
--------------------------------------------------------------------------------
--- 5) Подготовка функции подсчёта Tool-ов
--------------------------------------------------------------------------------
 local function countTools()
-    local count = 0
-    for _, item in ipairs(backpack:GetChildren()) do
-        if item:IsA("Tool") then count += 1 end
+    local c = 0
+    for _, itm in ipairs(backpack:GetChildren()) do
+        if itm:IsA("Tool") then c += 1 end
     end
-    local char = getCharacter()
-    for _, item in ipairs(char:GetChildren()) do
-        if item:IsA("Tool") then count += 1 end
+    local ch = getCharacter()
+    for _, itm in ipairs(ch:GetChildren()) do
+        if itm:IsA("Tool") then c += 1 end
     end
-    return count
+    return c
 end
 
--------------------------------------------------------------------------------
--- 6) Основной цикл
--------------------------------------------------------------------------------
 task.spawn(function()
     while true do
         task.wait(0.01)
@@ -169,129 +139,108 @@ task.spawn(function()
 
         local character = getCharacter()
 
-        ----------------------------------------------------------------------------
-        -- 6.a) Переносим всё из Backpack → Character,
-        --       кроме "Shovel [Destroy Plants]" и любых, чьи имена содержат "Uses" или "Age"
-        ----------------------------------------------------------------------------
+        -- 6.a) Перенос
         for _, item in ipairs(backpack:GetChildren()) do
-            local name = item.Name
-            if name ~= "Shovel [Destroy Plants]" 
-            and not name:find("Uses") 
-            and not name:find("Age") then
+            local nm = item.Name
+            if nm ~= "Shovel [Destroy Plants]"
+            and not nm:find("Uses")
+            and not nm:find("Age") then
                 item.Parent = character
             end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.b) Посадка фруктов
-        ----------------------------------------------------------------------------
-        do
-            for _, name in ipairs(shuffle(fruitNames)) do
-                if not enabled then break end
-                plantEvent:FireServer(targetPosPlant, name)
-            end
-            if not enabled then continue end
+        -- 6.b) Посадка
+        for _, nm in ipairs(shuffle(fruitNames)) do
+            if not enabled then break end
+            plantEvent:FireServer(targetPosPlant, nm)
         end
+        if not enabled then continue end
 
-        ----------------------------------------------------------------------------
-        -- 6.c) Телепортируем персонажа на рандомизированную позицию фермы
-        ----------------------------------------------------------------------------
+        -- 6.c) Телепорт
         do
             local hrp = character:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.CFrame = CFrame.new(getRandomFarmPos()) end
+            if hrp then
+                hrp.CFrame = CFrame.new(
+                    farmBase.X + math.random(-5,5),
+                    farmBase.Y + math.random(0,3),
+                    farmBase.Z + math.random(-5,5)
+                )
+            end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.d) Ждём 0.3 секунды
-        ----------------------------------------------------------------------------
+        -- 6.d) Пауза
         do
-            local elapsed = 0
-            while elapsed < 0.1 do
-                task.wait(0.01)
-                elapsed += 0.01
+            local e = 0
+            while e < 0.1 do
+                task.wait(0.01); e += 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.e) Зажимаем "E" и выполняем цикл с teleport+plant+transfer
-        ----------------------------------------------------------------------------
+        -- 6.e) Удержание
         do
             while enabled do
-                -- Телепорт и короткий tap E
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if hrp then
-                    hrp.CFrame = CFrame.new(getRandomFarmPos())
-                    VirtualInputMgr:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    hrp.CFrame = CFrame.new(
+                        farmBase.X + math.random(-5,5),
+                        farmBase.Y + math.random(0,3),
+                        farmBase.Z + math.random(-5,5)
+                    )
+                    VirtualInputMgr:SendKeyEvent(true, currentKey, false, game)
                     task.wait(0.03)
-                    VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    VirtualInputMgr:SendKeyEvent(false, currentKey, false, game)
                 end
 
-                -- Снова переносим
+                -- перенос + посадка внутри удержания
                 for _, item in ipairs(backpack:GetChildren()) do
-                    local name = item.Name
-                    if name ~= "Shovel [Destroy Plants]" 
-                    and not name:find("Uses") 
-                    and not name:find("Age") then
+                    local nm = item.Name
+                    if nm ~= "Shovel [Destroy Plants]"
+                    and not nm:find("Uses")
+                    and not nm:find("Age") then
                         item.Parent = character
                     end
                 end
-
-                -- Сажаем
-                for _, name in ipairs(shuffle(fruitNames)) do
+                for _, nm in ipairs(shuffle(fruitNames)) do
                     if not enabled then break end
-                    plantEvent:FireServer(targetPosPlant, name)
+                    plantEvent:FireServer(targetPosPlant, nm)
                 end
 
-                -- Проверяем количество инструментов
                 if countTools() > 130 then break end
 
-                -- Ждём 0.5 сек перед повтором
-                local wt = 0
-                while wt < 0.1 do
-                    task.wait(0.01)
-                    wt += 0.01
+                local w = 0
+                while w < 0.05 do
+                    task.wait(0.01); w += 0.01
                     if not enabled then break end
                 end
                 if not enabled then break end
             end
-
-            -- Отпускаем E если выключили
-            VirtualInputMgr:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            VirtualInputMgr:SendKeyEvent(false, currentKey, false, game)
             if not enabled then continue end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.f) Телепортируем персонажа на позицию продажи
-        ----------------------------------------------------------------------------
+        -- 6.f) Продажа
         do
             local hrp = character:FindFirstChild("HumanoidRootPart")
             if hrp then hrp.CFrame = CFrame.new(sellPos) end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.g) Ждём 0.3 секунды
-        ----------------------------------------------------------------------------
+        -- 6.g) Пауза
         do
-            local elapsed = 0
-            while elapsed < 0.1 do
-                task.wait(0.01)
-                elapsed += 0.01
+            local e = 0
+            while e < 0.1 do
+                task.wait(0.01); e += 0.01
                 if not enabled then break end
             end
             if not enabled then continue end
         end
 
-        ----------------------------------------------------------------------------
-        -- 6.h) Продажа: три вызова Sell_Inventory
-        ----------------------------------------------------------------------------
-        do
-            for i = 1, 3 do
-                if not enabled then break end
-                sellEvent:FireServer()
-                task.wait(0.01)
-            end
+        -- 6.h) Sell
+        for i = 1, 3 do
+            if not enabled then break end
+            sellEvent:FireServer()
+            task.wait(0.01)
         end
     end
 end)
