@@ -91,15 +91,16 @@ end)
 
 -- (Далее весь остальной код без изменений, использующий `currentKey` при VirtualInputMgr:SendKeyEvent)
 
-local targetPosPlant = Vector3.new(26.787460327148438, 0.13552704453468323, -130.29730224609375)
-local farmBase        = Vector3.new(24, 3, -126)
+local targetPosPlant = Vector3.new(20.912565231323242, 0.13552704453468323, -130.45901489257812)
+local farmBase        = Vector3.new(20.912565231323242, 0.13552704453468323, -130.45901489257812)
 local sellPos         = Vector3.new(89, 3, 0)
 
 local fruitNames = {
     "Orange Tulip",
     "Apple","Bamboo","Coconut","Cactus","Dragon Fruit","Mango","Grape",
     "Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose","Lilac",
-    "Foxglove","Lily","Pink Lily","Purple Dahlia","Lavender","Nectarshade","Nectarine","Mushroom",
+    "Foxglove","Lily","Pink Lily","Purple Dahlia","Lavender","Nectarshade","Nectarine","Mushroom","Ember Lily",
+    "Hive Fruit",
 }
 
 local function shuffle(t)
