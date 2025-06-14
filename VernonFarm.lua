@@ -100,7 +100,7 @@ local fruitNames = {
     "Apple","Bamboo","Coconut","Cactus","Dragon Fruit","Mango","Grape",
     "Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose","Lilac",
     "Foxglove","Lily","Pink Lily","Purple Dahlia","Lavender","Nectarshade","Nectarine","Mushroom","Ember Lily",
-    "Hive Fruit","Grape","Manuka Flower"
+    "Hive Fruit","Grape","Manuka Flower",
 }
 
 local function shuffle(t)
