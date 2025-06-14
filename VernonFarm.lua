@@ -96,8 +96,7 @@ local farmBase        = Vector3.new(20.912565231323242, 0.13552704453468323, -13
 local sellPos         = Vector3.new(89, 3, 0)
 
 local fruitNames = {
-    "Orange Tulip",
-    "Apple","Bamboo","Coconut","Cactus","Dragon Fruit","Mango","Grape",
+    "Coconut","Cactus","Dragon Fruit","Mango","Grape",
     "Mushroom","Pepper","Cacao","Beanstalk","Raspberry","Rose","Lilac",
     "Foxglove","Lily","Pink Lily","Purple Dahlia","Lavender","Nectarshade","Nectarine","Mushroom","Ember Lily",
     "Hive Fruit","Grape","Manuka Flower",
